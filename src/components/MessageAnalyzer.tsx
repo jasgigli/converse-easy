@@ -12,27 +12,29 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/use-toast';
 import { Languages, MessageCircle, Globe } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 const MessageAnalyzer = () => {
+  const { canSendMessage, incrementMessageCount, messageCount, isProUser } = useAuth();
+  const { toast } = useToast();
   const [message, setMessage] = useState('');
   const [analyzing, setAnalyzing] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [languageFrom, setLanguageFrom] = useState('english');
   const [languageTo, setLanguageTo] = useState('japanese');
-  const { toast } = useToast();
   const resultRef = useRef<HTMLDivElement>(null);
 
-  const analyzeMessage = () => {
-    if (!message.trim()) {
+  const handleAnalyze = async () => {
+    if (!canSendMessage) {
       toast({
-        title: 'Empty Message',
-        description: 'Please enter a message to analyze.',
-        variant: 'destructive',
+        title: "Message limit reached",
+        description: "You've reached your daily limit of 50 messages. Upgrade to Pro for unlimited messages.",
+        variant: "destructive"
       });
       return;
     }
 
-    setAnalyzing(true);
+    incrementMessageCount();
     
     // Simulate API call with timeout
     setTimeout(() => {
@@ -173,7 +175,15 @@ const MessageAnalyzer = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto py-8 px-4">
+    <div className="max-w-4xl mx-auto p-4">
+      {!isProUser && (
+        <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <p className="text-sm text-yellow-800">
+            Free tier: {messageCount}/50 messages used today. 
+            {messageCount >= 45 && " Upgrade to Pro for unlimited messages."}
+          </p>
+        </div>
+      )}
       <Card className="card-shadow">
         <CardContent className="p-6">
           <h2 className="text-2xl font-bold mb-6">Message Analyzer</h2>
@@ -239,7 +249,7 @@ const MessageAnalyzer = () => {
           </div>
           
           <Button 
-            onClick={analyzeMessage} 
+            onClick={handleAnalyze} 
             className="w-full bg-converse-primary hover:bg-converse-secondary"
             disabled={analyzing}
           >
