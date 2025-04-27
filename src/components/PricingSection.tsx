@@ -3,8 +3,14 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Check } from 'lucide-react';
+import { useUser } from '@clerk/clerk-react';
+import { Link } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 
 const PricingSection = () => {
+  const { isSignedIn } = useUser();
+  const { isProUser } = useAuth();
+  
   const plans = [
     {
       name: 'Freemium',
@@ -16,8 +22,10 @@ const PricingSection = () => {
         '50 messages/day limit',
         'Individual use only',
       ],
-      buttonText: 'Get Started',
+      buttonText: isSignedIn ? 'Current Plan' : 'Get Started',
       popular: false,
+      disabled: isSignedIn && !isProUser,
+      action: '/sign-up'
     },
     {
       name: 'Pro',
@@ -31,8 +39,10 @@ const PricingSection = () => {
         'Context-aware recommendations',
         'Mobile app access',
       ],
-      buttonText: 'Start 14-Day Trial',
+      buttonText: isProUser ? 'Current Plan' : 'Start 14-Day Trial',
       popular: true,
+      disabled: isProUser,
+      action: '/upgrade/pro'
     },
     {
       name: 'Enterprise',
@@ -48,8 +58,18 @@ const PricingSection = () => {
       ],
       buttonText: 'Contact Sales',
       popular: false,
+      disabled: false,
+      action: '/contact'
     },
   ];
+
+  const handlePlanClick = (plan: any) => {
+    // For demo purposes - in real implementation, this would redirect to checkout or sign up
+    console.log(`Selected plan: ${plan.name}`);
+    
+    // Here we would implement proper payment integration 
+    // or user upgrade flow for the Pro plan
+  };
 
   return (
     <section id="pricing" className="py-20 px-4 md:px-6 bg-gray-50">
@@ -65,12 +85,17 @@ const PricingSection = () => {
               key={index}
               className={`overflow-hidden animate-fade-in ${
                 plan.popular ? 'border-converse-primary border-2 relative' : 'border-gray-200'
-              }`}
+              } ${plan.disabled ? 'opacity-70' : ''}`}
               style={{ animationDelay: `${index * 0.1}s` }}
             >
               {plan.popular && (
                 <div className="bg-converse-primary text-white text-xs font-semibold py-1 px-3 absolute top-0 right-0 rounded-bl-lg">
                   MOST POPULAR
+                </div>
+              )}
+              {(isProUser && plan.name === 'Pro') || (!isProUser && !isSignedIn && plan.name === 'Freemium') && (
+                <div className="bg-green-500 text-white text-xs font-semibold py-1 px-3 absolute top-0 left-0 rounded-br-lg">
+                  RECOMMENDED
                 </div>
               )}
               <CardHeader className="pt-8 px-6 pb-0">
@@ -94,18 +119,42 @@ const PricingSection = () => {
                 </ul>
               </CardContent>
               <CardFooter className="pb-8 px-6">
-                <Button 
-                  className={`w-full ${
-                    plan.popular 
-                      ? 'bg-converse-primary hover:bg-converse-secondary' 
-                      : 'bg-white text-converse-primary border border-converse-primary hover:bg-converse-light'
-                  }`}
-                >
-                  {plan.buttonText}
-                </Button>
+                {isSignedIn && plan.disabled ? (
+                  <Button 
+                    className={`w-full bg-gray-400 text-white cursor-not-allowed`}
+                    disabled
+                  >
+                    {plan.buttonText}
+                  </Button>
+                ) : (
+                  <Button 
+                    className={`w-full ${
+                      plan.popular 
+                        ? 'bg-converse-primary hover:bg-converse-secondary' 
+                        : 'bg-white text-converse-primary border border-converse-primary hover:bg-converse-light'
+                    }`}
+                    onClick={() => handlePlanClick(plan)}
+                    asChild={!plan.disabled}
+                  >
+                    {isSignedIn ? (
+                      <span>{plan.buttonText}</span>
+                    ) : (
+                      <Link to={plan.action}>
+                        {plan.buttonText}
+                      </Link>
+                    )}
+                  </Button>
+                )}
               </CardFooter>
             </Card>
           ))}
+        </div>
+        
+        <div className="mt-12 text-center">
+          <p className="text-lg mb-4">Need a custom solution for your team?</p>
+          <Button className="bg-converse-primary hover:bg-converse-secondary text-lg px-8 py-6">
+            Contact Our Enterprise Team
+          </Button>
         </div>
       </div>
     </section>

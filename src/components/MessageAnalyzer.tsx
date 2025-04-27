@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -11,11 +12,22 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/use-toast';
-import { Languages, MessageCircle, Globe } from 'lucide-react';
+import { 
+  Languages, 
+  MessageCircle, 
+  Globe, 
+  AlertCircle,
+  Lock,
+  ArrowRight
+} from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { Link } from 'react-router-dom';
+import {
+  Progress
+} from "@/components/ui/progress";
 
 const MessageAnalyzer = () => {
-  const { canSendMessage, incrementMessageCount, messageCount, isProUser } = useAuth();
+  const { canSendMessage, incrementMessageCount, messageCount, isProUser, remainingMessages } = useAuth();
   const { toast } = useToast();
   const [message, setMessage] = useState('');
   const [analyzing, setAnalyzing] = useState(false);
@@ -25,6 +37,15 @@ const MessageAnalyzer = () => {
   const resultRef = useRef<HTMLDivElement>(null);
 
   const handleAnalyze = async () => {
+    if (!message.trim()) {
+      toast({
+        title: "Empty message",
+        description: "Please enter a message to analyze",
+        variant: "destructive"
+      });
+      return;
+    }
+
     if (!canSendMessage) {
       toast({
         title: "Message limit reached",
@@ -34,6 +55,9 @@ const MessageAnalyzer = () => {
       return;
     }
 
+    setAnalyzing(true);
+    
+    // Only increment if we're actually going to perform analysis
     incrementMessageCount();
     
     // Simulate API call with timeout
@@ -174,16 +198,52 @@ const MessageAnalyzer = () => {
     };
   };
 
+  // Calculate progress percentage for message count
+  const progressPercentage = isProUser ? 100 : ((messageCount / 50) * 100);
+
   return (
     <div className="max-w-4xl mx-auto p-4">
       {!isProUser && (
-        <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <p className="text-sm text-yellow-800">
-            Free tier: {messageCount}/50 messages used today. 
-            {messageCount >= 45 && " Upgrade to Pro for unlimited messages."}
-          </p>
+        <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-medium text-yellow-800">Free Tier Usage</h3>
+            <span className="text-sm text-yellow-800 font-medium">
+              {messageCount}/50 messages used today
+            </span>
+          </div>
+          <Progress value={progressPercentage} className="h-2 mb-2" />
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-yellow-700">
+              {remainingMessages > 0 ? 
+                `${remainingMessages} messages remaining today` : 
+                "Message limit reached for today"}
+            </p>
+            <Link to="#pricing" className="text-sm font-medium text-converse-primary hover:underline flex items-center gap-1">
+              Upgrade to Pro <ArrowRight size={14} />
+            </Link>
+          </div>
         </div>
       )}
+
+      {!canSendMessage && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg animate-fade-in">
+          <div className="flex items-start gap-3">
+            <AlertCircle size={24} className="text-red-500 shrink-0 mt-1" />
+            <div>
+              <h3 className="font-medium text-red-800">Daily Limit Reached</h3>
+              <p className="text-red-700 mb-4">
+                You've used all your free messages for today. Upgrade to Pro for unlimited messages.
+              </p>
+              <Link to="#pricing">
+                <Button className="bg-converse-primary hover:bg-converse-secondary flex items-center gap-2">
+                  <Lock size={16} /> Upgrade to Pro
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
       <Card className="card-shadow">
         <CardContent className="p-6">
           <h2 className="text-2xl font-bold mb-6">Message Analyzer</h2>
@@ -196,6 +256,7 @@ const MessageAnalyzer = () => {
               <Select
                 value={languageFrom}
                 onValueChange={setLanguageFrom}
+                disabled={!canSendMessage}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -217,6 +278,7 @@ const MessageAnalyzer = () => {
               <Select 
                 value={languageTo}
                 onValueChange={setLanguageTo}
+                disabled={!canSendMessage}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -237,11 +299,15 @@ const MessageAnalyzer = () => {
               Enter your message:
             </label>
             <Textarea
-              placeholder="Type your message here... (Try phrases like 'Please submit the report by EOD' or 'I need this ASAP')"
+              placeholder={canSendMessage ? 
+                "Type your message here... (Try phrases like 'Please submit the report by EOD' or 'I need this ASAP')" :
+                "Daily message limit reached. Upgrade to Pro to continue using the analyzer."
+              }
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               rows={5}
               className="resize-none"
+              disabled={!canSendMessage}
             />
             <div className="mt-2 text-xs text-gray-500">
               Try phrases like "Let me know ASAP" or "Please submit this by EOD"
@@ -251,7 +317,7 @@ const MessageAnalyzer = () => {
           <Button 
             onClick={handleAnalyze} 
             className="w-full bg-converse-primary hover:bg-converse-secondary"
-            disabled={analyzing}
+            disabled={analyzing || !canSendMessage}
           >
             {analyzing ? 'Analyzing...' : 'Analyze Message'}
           </Button>
