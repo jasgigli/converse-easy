@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -12,7 +11,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/use-toast';
-import { Translate, MessageCircle, Globe } from 'lucide-react';
+import { Languages, MessageCircle, Globe } from 'lucide-react';
 
 const MessageAnalyzer = () => {
   const [message, setMessage] = useState('');
@@ -258,7 +257,7 @@ const MessageAnalyzer = () => {
               <Tabs defaultValue="translation">
                 <TabsList className="mb-4">
                   <TabsTrigger value="translation" className="flex items-center gap-2">
-                    <Translate size={16} /> Translation
+                    <Languages size={16} /> Translation
                   </TabsTrigger>
                   <TabsTrigger value="cultural" className="flex items-center gap-2">
                     <Globe size={16} /> Cultural Nuances

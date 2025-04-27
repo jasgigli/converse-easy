@@ -8,12 +8,12 @@ import IntegrationSection from './IntegrationSection';
 import CallToAction from './CallToAction';
 import Footer from './Footer';
 import { Link } from 'react-router-dom';
-import { Globe, MessageCircle, Translate } from 'lucide-react';
+import { Languages, MessageCircle, Globe } from 'lucide-react';
 
 const LandingPage = () => {
   const features = [
     {
-      icon: <Translate size={24} />,
+      icon: <Languages size={24} />,
       title: 'Real-Time Translation',
       description: 'Translate text across 50+ languages including regional dialects and workplace jargon.',
     },

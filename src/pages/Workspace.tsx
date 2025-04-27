@@ -1,4 +1,3 @@
-
 import React from 'react';
 import NavBar from '@/components/NavBar';
 import MessageAnalyzer from '@/components/MessageAnalyzer';
@@ -6,7 +5,7 @@ import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { MessageCircle, Translate, Globe, Info } from 'lucide-react';
+import { MessageCircle, Languages, Globe, Info } from 'lucide-react';
 
 const Workspace = () => {
   return (
