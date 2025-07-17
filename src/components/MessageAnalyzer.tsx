@@ -30,16 +30,25 @@ import {
 import { TranslationService, TranslationResult } from '@/services/translationService';
 import { Badge } from '@/components/ui/badge';
 
-const MessageAnalyzer = () => {
+const MessageAnalyzer = ({ prefilledMessage }: { prefilledMessage?: string | null }) => {
   const { canSendMessage, incrementMessageCount, messageCount, isProUser, remainingMessages } = useAuth();
   const { toast } = useToast();
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState(prefilledMessage || '');
   const [analyzing, setAnalyzing] = useState(false);
   const [result, setResult] = useState<TranslationResult | null>(null);
   const [languageFrom, setLanguageFrom] = useState('english');
   const [languageTo, setLanguageTo] = useState('japanese');
   const [error, setError] = useState<string | null>(null);
   const resultRef = useRef<HTMLDivElement>(null);
+
+  // Update message when prefilledMessage changes
+  React.useEffect(() => {
+    if (prefilledMessage) {
+      setMessage(prefilledMessage);
+      setResult(null);
+      setError(null);
+    }
+  }, [prefilledMessage]);
 
   const handleAnalyze = async () => {
     if (!message.trim()) {

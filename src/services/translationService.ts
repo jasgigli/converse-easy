@@ -138,50 +138,119 @@ const TRANSLATION_DICTIONARY = {
 
 export class TranslationService {
   static async translateText(text: string, targetLanguage: string): Promise<TranslationResult> {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // Simulate API delay with realistic timing
+    await new Promise(resolve => setTimeout(resolve, 1200 + Math.random() * 800));
     
-    const translatedText = this.performTranslation(text, targetLanguage);
-    const culturalNuances = this.detectCulturalNuances(text);
-    const toneAnalysis = this.analyzeTone(text);
+    try {
+      const translatedText = this.performTranslation(text, targetLanguage);
+      const culturalNuances = this.detectCulturalNuances(text);
+      const toneAnalysis = this.analyzeTone(text);
+      
+      // Calculate confidence based on text complexity and cultural issues
+      const confidence = this.calculateConfidence(text, culturalNuances);
+      
+      return {
+        translatedText,
+        confidence,
+        culturalNuances,
+        toneAnalysis
+      };
+    } catch (error) {
+      throw new Error('Translation service temporarily unavailable. Please try again.');
+    }
+  }
+  
+  private static calculateConfidence(text: string, nuances: CulturalNuance[]): number {
+    let baseConfidence = 0.9;
     
-    return {
-      translatedText,
-      confidence: 0.85,
-      culturalNuances,
-      toneAnalysis
+    // Reduce confidence based on cultural issues
+    const severityPenalty = {
+      'high': 0.15,
+      'medium': 0.08,
+      'low': 0.03
     };
+    
+    nuances.forEach(nuance => {
+      baseConfidence -= severityPenalty[nuance.severity];
+    });
+    
+    // Adjust based on text complexity
+    const wordCount = text.split(' ').length;
+    if (wordCount < 5) baseConfidence -= 0.1;
+    if (wordCount > 50) baseConfidence -= 0.05;
+    
+    return Math.max(0.65, Math.min(0.98, baseConfidence));
   }
   
   private static performTranslation(text: string, targetLanguage: string): string {
     const dictionary = TRANSLATION_DICTIONARY[targetLanguage as keyof typeof TRANSLATION_DICTIONARY];
     
     if (!dictionary) {
-      return `[${targetLanguage}] ${text}`;
+      return `[Translation to ${targetLanguage}] ${text}`;
     }
     
     let translatedText = text.toLowerCase();
     
-    // Replace common phrases
-    Object.entries(dictionary).forEach(([english, translation]) => {
-      const regex = new RegExp(`\\b${english}\\b`, 'gi');
-      translatedText = translatedText.replace(regex, translation);
+    // Apply context-aware translations
+    const sentences = text.split(/[.!?]+/).filter(s => s.trim());
+    const translatedSentences = sentences.map(sentence => {
+      let translated = sentence.toLowerCase();
+      
+      // Replace common phrases with context
+      Object.entries(dictionary).forEach(([english, translation]) => {
+        const regex = new RegExp(`\\b${english}\\b`, 'gi');
+        translated = translated.replace(regex, translation);
+      });
+      
+      return translated;
     });
     
-    // Add cultural context note
+    translatedText = translatedSentences.join('. ');
+    
+    // Add cultural adaptation note
     const culturalNote = this.getCulturalNote(targetLanguage);
-    return `${translatedText}\n\n${culturalNote}`;
+    const contextualTip = this.getContextualTip(text, targetLanguage);
+    
+    return `${translatedText}\n\n${culturalNote}\n\n💡 ${contextualTip}`;
   }
   
   private static getCulturalNote(language: string): string {
     const notes = {
-      japanese: '(丁寧語で表現されています - Expressed in polite form)',
-      spanish: '(Expresado con cortesía apropiada - Expressed with appropriate courtesy)',
-      german: '(Höflich und professionell ausgedrückt - Expressed politely and professionally)',
-      french: '(Exprimé avec politesse appropriée - Expressed with appropriate politeness)'
+      japanese: '🇯🇵 (丁寧語で表現されています - Expressed in polite form)',
+      spanish: '🇪🇸 (Expresado con cortesía apropiada - Expressed with appropriate courtesy)',
+      german: '🇩🇪 (Höflich und professionell ausgedrückt - Expressed politely and professionally)',
+      french: '🇫🇷 (Exprimé avec politesse appropriée - Expressed with appropriate politeness)'
     };
     
-    return notes[language as keyof typeof notes] || '(Culturally adapted)';
+    return notes[language as keyof typeof notes] || '🌍 (Culturally adapted for international communication)';
+  }
+  
+  private static getContextualTip(text: string, language: string): string {
+    const tips = {
+      japanese: [
+        'In Japanese business culture, indirect communication is preferred',
+        'Consider using humble forms when making requests',
+        'Time references should be very specific to avoid confusion'
+      ],
+      spanish: [
+        'Spanish speakers appreciate warm, personal greetings',
+        'Consider regional variations in formal vs informal address',
+        'Relationship-building phrases can enhance communication'
+      ],
+      german: [
+        'German business communication values directness and clarity',
+        'Structured information with clear timeframes works best',
+        'Formal titles and proper greetings are important'
+      ],
+      french: [
+        'French business culture values eloquence and proper form',
+        'Polite expressions and formal structures are essential',
+        'Context and nuance are highly valued in communication'
+      ]
+    };
+    
+    const languageTips = tips[language as keyof typeof tips] || ['Cross-cultural communication benefits from clear, respectful language'];
+    return languageTips[Math.floor(Math.random() * languageTips.length)];
   }
   
   private static detectCulturalNuances(text: string): CulturalNuance[] {
