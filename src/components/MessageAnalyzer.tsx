@@ -18,22 +18,27 @@ import {
   Globe, 
   AlertCircle,
   Lock,
-  ArrowRight
+  ArrowRight,
+  CheckCircle,
+  XCircle
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Link } from 'react-router-dom';
 import {
   Progress
 } from "@/components/ui/progress";
+import { TranslationService, TranslationResult } from '@/services/translationService';
+import { Badge } from '@/components/ui/badge';
 
 const MessageAnalyzer = () => {
   const { canSendMessage, incrementMessageCount, messageCount, isProUser, remainingMessages } = useAuth();
   const { toast } = useToast();
   const [message, setMessage] = useState('');
   const [analyzing, setAnalyzing] = useState(false);
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<TranslationResult | null>(null);
   const [languageFrom, setLanguageFrom] = useState('english');
   const [languageTo, setLanguageTo] = useState('japanese');
+  const [error, setError] = useState<string | null>(null);
   const resultRef = useRef<HTMLDivElement>(null);
 
   const handleAnalyze = async () => {
@@ -56,146 +61,46 @@ const MessageAnalyzer = () => {
     }
 
     setAnalyzing(true);
+    setError(null);
     
-    // Only increment if we're actually going to perform analysis
-    incrementMessageCount();
-    
-    // Simulate API call with timeout
-    setTimeout(() => {
-      // Demo results based on common workplace phrases
-      const results = {
-        translation: {
-          original: message,
-          translated: simulateTranslation(message, languageTo),
-        },
-        culturalNuances: detectCulturalNuances(message),
-        toneAnalysis: analyzeTone(message),
-      };
+    try {
+      // Only increment if we're actually going to perform analysis
+      incrementMessageCount();
       
-      setResult(results);
-      setAnalyzing(false);
+      // Use real translation service
+      const translationResult = await TranslationService.translateText(message, languageTo);
+      
+      setResult(translationResult);
       
       if (resultRef.current) {
         resultRef.current.scrollIntoView({ behavior: 'smooth' });
       }
-    }, 1500);
+      
+      toast({
+        title: "Analysis complete",
+        description: "Your message has been analyzed successfully",
+        variant: "default"
+      });
+      
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'An error occurred during analysis');
+      toast({
+        title: "Analysis failed",
+        description: "Please try again later",
+        variant: "destructive"
+      });
+    } finally {
+      setAnalyzing(false);
+    }
   };
   
-  // Simulated translation function
-  const simulateTranslation = (text: string, targetLang: string) => {
-    // This is just a demo simulation
-    if (targetLang === 'japanese') {
-      if (text.toLowerCase().includes('deadline')) {
-        return '締め切りについて話しましょう。（丁寧な表現で書かれています）';
-      }
-      if (text.toLowerCase().includes('meeting')) {
-        return '会議のスケジュールを調整しましょう。（丁寧な表現で書かれています）';
-      }
-      if (text.toLowerCase().includes('asap') || text.toLowerCase().includes('as soon as possible')) {
-        return '可能な限り早くお願いします。（丁寧な表現に調整されています）';
-      }
-      return '翻訳されたテキストがここに表示されます。（デモ版）';
+  const getSeverityColor = (severity: string) => {
+    switch (severity) {
+      case 'high': return 'bg-red-100 text-red-800 border-red-200';
+      case 'medium': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'low': return 'bg-green-100 text-green-800 border-green-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
-    
-    if (targetLang === 'spanish') {
-      if (text.toLowerCase().includes('deadline')) {
-        return 'Hablemos sobre la fecha límite. (Expresado cortésmente)';
-      }
-      if (text.toLowerCase().includes('meeting')) {
-        return 'Organicemos una reunión. (Expresado cortésmente)';
-      }
-      return 'El texto traducido aparecería aquí. (Versión demo)';
-    }
-    
-    return 'Translated text would appear here. (Demo version)';
-  };
-  
-  // Detect cultural nuances
-  const detectCulturalNuances = (text: string) => {
-    const nuances = [];
-    
-    if (text.toLowerCase().includes('asap') || text.toLowerCase().includes('as soon as possible')) {
-      nuances.push({
-        phrase: 'ASAP / as soon as possible',
-        issue: 'In many cultures, this can sound demanding or create unnecessary pressure',
-        suggestion: 'Could you complete this by [specific date/time]?',
-      });
-    }
-    
-    if (text.toLowerCase().includes('just') && 
-        (text.toLowerCase().includes('wondering') || text.toLowerCase().includes('checking'))) {
-      nuances.push({
-        phrase: 'Just wondering/checking',
-        issue: 'Can make you sound uncertain or apologetic in some cultures',
-        suggestion: 'I would like to know about...',
-      });
-    }
-    
-    if (text.toLowerCase().includes('let me know')) {
-      nuances.push({
-        phrase: 'Let me know',
-        issue: 'Can be seen as vague or placing burden on the recipient',
-        suggestion: 'Please share your thoughts on this by [date]',
-      });
-    }
-    
-    if (text.toLowerCase().includes('hop on a call')) {
-      nuances.push({
-        phrase: 'Hop on a call',
-        issue: 'Casual idiom that may be confusing for non-native speakers',
-        suggestion: 'Would you be available for a phone/video meeting?',
-      });
-    }
-    
-    if (text.toLowerCase().includes('eod') || text.toLowerCase().includes('end of day')) {
-      nuances.push({
-        phrase: 'EOD / end of day',
-        issue: 'Ambiguous due to different time zones and work schedules',
-        suggestion: 'by [specific time] [timezone]',
-      });
-    }
-    
-    return nuances.length > 0 ? nuances : [{ 
-      phrase: 'No specific cultural issues detected', 
-      issue: '',
-      suggestion: 'Your message appears clear for cross-cultural communication'
-    }];
-  };
-  
-  // Analyze tone
-  const analyzeTone = (text: string) => {
-    let tone = 'neutral';
-    let formality = 'neutral';
-    let suggestions = [];
-    
-    // Simple tone analysis
-    if (text.includes('!') || text.toLowerCase().includes('urgent') || text.toLowerCase().includes('asap')) {
-      tone = 'urgent/demanding';
-      suggestions.push('Consider softening urgent language to avoid appearing demanding');
-    } else if (text.toLowerCase().includes('please') && text.toLowerCase().includes('thank')) {
-      tone = 'polite';
-    } else if (text.toLowerCase().includes('sorry') || text.toLowerCase().includes('apolog')) {
-      tone = 'apologetic';
-      suggestions.push('Consider if an apology is necessary in this context');
-    }
-    
-    // Simple formality analysis
-    if (text.toLowerCase().includes('hey') || text.toLowerCase().includes('btw') || text.toLowerCase().includes('fyi')) {
-      formality = 'casual';
-      suggestions.push('Some expressions are casual and may be inappropriate for formal communication');
-    } else if (text.toLowerCase().includes('dear') || text.toLowerCase().includes('respectfully')) {
-      formality = 'formal';
-    }
-    
-    if (suggestions.length === 0) {
-      suggestions.push('Tone appears appropriate for professional communication');
-    }
-    
-    return {
-      overall: tone,
-      formality,
-      suggestions
-    };
   };
 
   // Calculate progress percentage for message count
@@ -324,11 +229,31 @@ const MessageAnalyzer = () => {
         </CardContent>
       </Card>
       
+      {error && (
+        <div className="mt-8 animate-fade-in">
+          <Card className="border-red-200 bg-red-50">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-2">
+                <XCircle className="text-red-500" size={24} />
+                <h3 className="text-xl font-bold text-red-800">Analysis Error</h3>
+              </div>
+              <p className="text-red-700 mt-2">{error}</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {result && (
         <div ref={resultRef} className="mt-8 animate-fade-in">
           <Card>
             <CardContent className="p-6">
-              <h3 className="text-xl font-bold mb-6">Analysis Results</h3>
+              <div className="flex items-center gap-2 mb-6">
+                <CheckCircle className="text-green-500" size={24} />
+                <h3 className="text-xl font-bold">Analysis Results</h3>
+                <Badge variant="outline" className="ml-auto">
+                  Confidence: {Math.round(result.confidence * 100)}%
+                </Badge>
+              </div>
               
               <Tabs defaultValue="translation">
                 <TabsList className="mb-4">
@@ -337,6 +262,11 @@ const MessageAnalyzer = () => {
                   </TabsTrigger>
                   <TabsTrigger value="cultural" className="flex items-center gap-2">
                     <Globe size={16} /> Cultural Nuances
+                    {result.culturalNuances.length > 0 && (
+                      <Badge variant="secondary" className="ml-1">
+                        {result.culturalNuances.length}
+                      </Badge>
+                    )}
                   </TabsTrigger>
                   <TabsTrigger value="tone" className="flex items-center gap-2">
                     <MessageCircle size={16} /> Tone Analysis
@@ -346,48 +276,80 @@ const MessageAnalyzer = () => {
                 <TabsContent value="translation" className="p-4 bg-gray-50 rounded-md">
                   <div className="mb-4">
                     <h4 className="font-medium text-gray-700 mb-2">Original Text:</h4>
-                    <p className="p-3 bg-white border rounded-md">{result.translation.original}</p>
+                    <p className="p-3 bg-white border rounded-md">{message}</p>
                   </div>
                   <div>
                     <h4 className="font-medium text-gray-700 mb-2">
                       Translated to {languageTo.charAt(0).toUpperCase() + languageTo.slice(1)}:
                     </h4>
-                    <p className="p-3 bg-white border rounded-md">{result.translation.translated}</p>
+                    <p className="p-3 bg-white border rounded-md whitespace-pre-wrap">{result.translatedText}</p>
                   </div>
                 </TabsContent>
                 
                 <TabsContent value="cultural" className="p-4 bg-gray-50 rounded-md">
-                  {result.culturalNuances.map((nuance: any, index: number) => (
-                    <div key={index} className="mb-4 last:mb-0">
-                      {nuance.issue ? (
-                        <div className="p-3 bg-white border rounded-md">
-                          <h4 className="font-medium text-converse-primary">{nuance.phrase}</h4>
-                          <p className="text-gray-700 mt-1"><strong>Issue:</strong> {nuance.issue}</p>
-                          <p className="text-gray-700 mt-1"><strong>Suggestion:</strong> {nuance.suggestion}</p>
+                  {result.culturalNuances.length > 0 ? (
+                    result.culturalNuances.map((nuance, index) => (
+                      <div key={index} className="mb-4 last:mb-0">
+                        <div className={`p-4 border rounded-md ${getSeverityColor(nuance.severity)}`}>
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="font-medium">{nuance.phrase}</h4>
+                            <Badge variant="outline" className={getSeverityColor(nuance.severity)}>
+                              {nuance.severity}
+                            </Badge>
+                          </div>
+                          <p className="mb-2"><strong>Issue:</strong> {nuance.issue}</p>
+                          <p><strong>Suggestion:</strong> {nuance.suggestion}</p>
                         </div>
-                      ) : (
-                        <div className="p-3 bg-white border rounded-md">
-                          <p>{nuance.phrase}</p>
-                        </div>
-                      )}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-4 bg-green-50 border border-green-200 rounded-md">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="text-green-500" size={20} />
+                        <p className="text-green-800">No cultural issues detected - your message appears clear for cross-cultural communication</p>
+                      </div>
                     </div>
-                  ))}
+                  )}
                 </TabsContent>
                 
                 <TabsContent value="tone" className="p-4 bg-gray-50 rounded-md">
-                  <div className="p-3 bg-white border rounded-md">
-                    <div className="mb-2">
-                      <span className="font-medium">Overall tone:</span> {' '}
-                      <span className="capitalize">{result.toneAnalysis.overall}</span>
+                  <div className="p-4 bg-white border rounded-md">
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <span className="font-medium">Overall tone:</span>
+                        <Badge variant="outline" className="ml-2 capitalize">
+                          {result.toneAnalysis.overall}
+                        </Badge>
+                      </div>
+                      <div>
+                        <span className="font-medium">Formality level:</span>
+                        <Badge variant="outline" className="ml-2 capitalize">
+                          {result.toneAnalysis.formality}
+                        </Badge>
+                      </div>
                     </div>
-                    <div className="mb-4">
-                      <span className="font-medium">Formality level:</span> {' '}
-                      <span className="capitalize">{result.toneAnalysis.formality}</span>
+                    
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <span className="font-medium">Politeness:</span>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Progress value={result.toneAnalysis.politeness * 10} className="flex-1" />
+                          <span className="text-sm">{result.toneAnalysis.politeness}/10</span>
+                        </div>
+                      </div>
+                      <div>
+                        <span className="font-medium">Urgency:</span>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Progress value={result.toneAnalysis.urgency * 10} className="flex-1" />
+                          <span className="text-sm">{result.toneAnalysis.urgency}/10</span>
+                        </div>
+                      </div>
                     </div>
+                    
                     <div>
                       <h4 className="font-medium mb-2">Suggestions:</h4>
                       <ul className="list-disc list-inside space-y-1">
-                        {result.toneAnalysis.suggestions.map((suggestion: string, index: number) => (
+                        {result.toneAnalysis.suggestions.map((suggestion, index) => (
                           <li key={index} className="text-gray-700">{suggestion}</li>
                         ))}
                       </ul>
